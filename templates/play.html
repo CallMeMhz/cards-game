@@ -1,0 +1,108 @@
+{% extends "layout.html" %}
+{% block body %}
+<style>
+    .hand, .my-table, .opponent-table {
+        min-height: 160px;
+    }
+    .card {
+        border: 1px solid #333;
+        margin: 16px;
+        width: 128px;
+        height: 128px;
+        float: left;
+        text-align: center;
+        font-style: italic;
+        cursor: pointer;
+    }
+</style>
+
+{% set current_user = session.username %}
+{% if game.current_turn[0] == current_user %}
+    {% set opponent_user = game.current_turn[1] %}
+{% else %}
+    {% set opponent_user = game.current_turn[0] %}
+{% endif %}
+
+<script>
+    current_user = '{{ current_user }}';
+    opponent_user = '{{ opponent_user }}';
+
+    function getGameData() {
+        $.getJSON('/getGameData', function(game) {
+            gamedata = game;
+
+            var html = '';
+            game.players[current_user].hand.forEach(function(card, idx) {
+                html += '<div class="card" onclick="takeTurn(\'' + idx + '\')"><h5>' + card.name + '</h5><br><span>dmg: ' + card.dmg + '</span><br><span>hp: ' + card.hp + '</span></div>';
+            });
+            $('.hand').html(html);
+
+            html = '';
+            game.players[current_user].table.forEach(function(card) {
+                html += '<div class="card"><h5>' + card.name + '</h5><br><span>dmg: ' + card.dmg + '</span><br><span>hp: ' + card.hp + '</span></div>';
+            });
+            $('.my-table').html(html);
+
+            html = '';
+            game.players[opponent_user].table.forEach(function(card) {
+                html += '<div class="card"><h5>' + card.name + '</h5><br><span>dmg: ' + card.dmg + '</span><br><span>hp: ' + card.hp + '</span></div>';
+            });
+            $('.opponent-table').html(html);
+
+            $('.my-status').text(current_user
+                + '(' + game.players[current_user].hp + ')'
+                + ' | ' + game.players[current_user].deck.length
+            )
+            $('.opponent-status').text(opponent_user
+                + '(' + game.players[opponent_user].hp + ')'
+                + ' | ' + game.players[opponent_user].deck.length
+            )
+
+            if (game.current_turn[0] == current_user) {
+                $('.my-status').css('background-color', 'orange');
+                $('.opponent-status').css('background-color', 'white');
+            } else {
+                $('.my-status').css('background-color', 'white');
+                $('.opponent-status').css('background-color', 'orange');
+            }
+        });
+    }
+
+    function takeTurn(cardId) {
+        $.ajax({
+            type: 'POST',
+            url: '/takeTurn',
+            contentType: "application/json; charset=utf-8",
+            data: JSON.stringify(gamedata.players[current_user].hand[cardId]),
+            dataType: 'json'
+        });
+    }
+
+    $(function() {
+        setInterval('getGameData()', 500);
+    });
+</script>
+
+<div class="container">
+    <div class="page-header">
+        <h3>
+            Gaming With {{ opponent_user }}
+        </h3>
+    </div>
+
+    <div class="row">
+        <h4 class="opponent-status"></h4>
+        <div class="opponent-table"></div>
+    </div>
+
+    <div class="row">
+        <h4 class="my-status"></h4>
+        <div class="my-table"></div>
+    </div>
+
+    <div class="row">
+        <h4>My Cards</h4>
+        <div class="hand"></div>
+    </div>
+</div>
+{% endblock %}
